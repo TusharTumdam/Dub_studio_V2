@@ -1,0 +1,221 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Authenticated user profile for ChitraVani Studio",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user",
+          "maxLength": 128
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name",
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address",
+          "maxLength": 150
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "User avatar URL",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Account registration timestamp",
+          "maxLength": 64
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last profile update timestamp",
+          "maxLength": 64
+        }
+      },
+      "required": ["id", "email", "createdAt", "updatedAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Video dubbing project with vocal settings and state",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique project identifier",
+          "maxLength": 128
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of user who owns this dubbing project",
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "description": "Project title or video title",
+          "maxLength": 160
+        },
+        "sourceLanguage": {
+          "type": "string",
+          "description": "Original audio language code",
+          "maxLength": 32
+        },
+        "adaptationStyle": {
+          "type": "string",
+          "description": "Hindi adaptation cinematic or conversational style",
+          "maxLength": 64
+        },
+        "indianDialect": {
+          "type": "string",
+          "description": "Indian vocal dialect selection",
+          "maxLength": 64
+        },
+        "globalVoiceId": {
+          "type": "string",
+          "description": "Locked character voice identifier",
+          "maxLength": 64
+        },
+        "durationSeconds": {
+          "type": "number",
+          "description": "Total duration of video in seconds"
+        },
+        "uploadedFileName": {
+          "type": "string",
+          "description": "Uploaded source video or sample reel name",
+          "maxLength": 255
+        },
+        "status": {
+          "type": "string",
+          "description": "Processing status of the dubbing pipeline",
+          "enum": ["draft", "in_progress", "completed"],
+          "maxLength": 32
+        },
+        "segmentCount": {
+          "type": "number",
+          "description": "Total number of dialogue cues"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Project creation timestamp",
+          "maxLength": 64
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last modified timestamp",
+          "maxLength": 64
+        }
+      },
+      "required": ["id", "ownerId", "title", "createdAt", "updatedAt"]
+    },
+    "Segment": {
+      "title": "Segment",
+      "description": "Timecoded dialogue cue with original text, Hindi adaptation, and voice settings",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Segment unique ID",
+          "maxLength": 128
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Parent project ID",
+          "maxLength": 128
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Owner UID matching project owner",
+          "maxLength": 128
+        },
+        "index": {
+          "type": "number",
+          "description": "Segment order index"
+        },
+        "startTime": {
+          "type": "number",
+          "description": "Start timestamp in seconds"
+        },
+        "endTime": {
+          "type": "number",
+          "description": "End timestamp in seconds"
+        },
+        "speaker": {
+          "type": "string",
+          "description": "Speaker identifier or character name",
+          "maxLength": 80
+        },
+        "detectedLanguage": {
+          "type": "string",
+          "description": "Detected source language label",
+          "maxLength": 64
+        },
+        "englishText": {
+          "type": "string",
+          "description": "Original source transcript",
+          "maxLength": 2000
+        },
+        "hindiDevanagari": {
+          "type": "string",
+          "description": "Adapted Hindi script in Devanagari",
+          "maxLength": 2000
+        },
+        "hinglishRoman": {
+          "type": "string",
+          "description": "Romanized Hinglish transcript",
+          "maxLength": 2000
+        },
+        "emotionPrompt": {
+          "type": "string",
+          "description": "Emotion cue for Indian voice delivery",
+          "maxLength": 500
+        },
+        "indianDialect": {
+          "type": "string",
+          "description": "Indian dialect choice for this segment",
+          "maxLength": 64
+        },
+        "voiceId": {
+          "type": "string",
+          "description": "Assigned Indian voice persona",
+          "maxLength": 64
+        },
+        "playbackRate": {
+          "type": "number",
+          "description": "Lip-sync calculated playback speed multiplier"
+        },
+        "hasAudio": {
+          "type": "boolean",
+          "description": "Flag indicating if Hindi voice WAV was synthesized"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp",
+          "maxLength": 64
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp",
+          "maxLength": 64
+        }
+      },
+      "required": ["id", "projectId", "ownerId", "index", "startTime", "endTime"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Authenticated user profile documents"
+    },
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "User dubbing projects with video settings"
+    },
+    "/projects/{projectId}/segments/{segmentId}": {
+      "schema": "Segment",
+      "description": "Timecoded dubbing dialogue segments for each project"
+    }
+  }
+}

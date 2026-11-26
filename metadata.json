@@ -1,0 +1,6 @@
+{
+  "name": "ChitraVani Studio — AI Video Dubbing & Cinematic Hindi Lip-Sync",
+  "description": "Six-stage AI video localization and dubbing studio that transforms English videos into natural, lip-synced Bollywood Cinematic Hindi or Conversational Hinglish productions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

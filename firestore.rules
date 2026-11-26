@@ -1,0 +1,139 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'email', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.id == request.auth.uid
+        && data.email is string && data.email.size() <= 150
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 120))
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500))
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'title', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'id', 'ownerId', 'title', 'sourceLanguage', 'adaptationStyle',
+          'indianDialect', 'globalVoiceId', 'durationSeconds', 'uploadedFileName',
+          'status', 'segmentCount', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id.size() <= 128
+        && data.ownerId is string && data.ownerId.size() <= 128
+        && data.ownerId == request.auth.uid
+        && data.title is string && data.title.size() <= 160
+        && (!('sourceLanguage' in data) || (data.sourceLanguage is string && data.sourceLanguage.size() <= 32))
+        && (!('adaptationStyle' in data) || (data.adaptationStyle is string && data.adaptationStyle.size() <= 64))
+        && (!('indianDialect' in data) || (data.indianDialect is string && data.indianDialect.size() <= 64))
+        && (!('globalVoiceId' in data) || (data.globalVoiceId is string && data.globalVoiceId.size() <= 64))
+        && (!('durationSeconds' in data) || (data.durationSeconds is number && data.durationSeconds >= 0))
+        && (!('uploadedFileName' in data) || (data.uploadedFileName is string && data.uploadedFileName.size() <= 255))
+        && (!('status' in data) || (data.status is string && data.status in ['draft', 'in_progress', 'completed']))
+        && (!('segmentCount' in data) || (data.segmentCount is number && data.segmentCount >= 0))
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidSegment(data, projId) {
+      return data.keys().hasAll(['id', 'projectId', 'ownerId', 'index', 'startTime', 'endTime'])
+        && data.keys().hasOnly([
+          'id', 'projectId', 'ownerId', 'index', 'startTime', 'endTime',
+          'speaker', 'detectedLanguage', 'englishText', 'hindiDevanagari',
+          'hinglishRoman', 'emotionPrompt', 'indianDialect', 'voiceId',
+          'playbackRate', 'hasAudio', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id.size() <= 128
+        && data.projectId is string && data.projectId == projId
+        && data.ownerId is string && data.ownerId == request.auth.uid
+        && data.index is number && data.index >= 0
+        && data.startTime is number && data.startTime >= 0
+        && data.endTime is number && data.endTime >= data.startTime
+        && (!('speaker' in data) || (data.speaker is string && data.speaker.size() <= 80))
+        && (!('detectedLanguage' in data) || (data.detectedLanguage is string && data.detectedLanguage.size() <= 64))
+        && (!('englishText' in data) || (data.englishText is string && data.englishText.size() <= 2000))
+        && (!('hindiDevanagari' in data) || (data.hindiDevanagari is string && data.hindiDevanagari.size() <= 2000))
+        && (!('hinglishRoman' in data) || (data.hinglishRoman is string && data.hinglishRoman.size() <= 2000))
+        && (!('emotionPrompt' in data) || (data.emotionPrompt is string && data.emotionPrompt.size() <= 500))
+        && (!('indianDialect' in data) || (data.indianDialect is string && data.indianDialect.size() <= 64))
+        && (!('voiceId' in data) || (data.voiceId is string && data.voiceId.size() <= 64))
+        && (!('playbackRate' in data) || (data.playbackRate is number && data.playbackRate > 0 && data.playbackRate <= 5.0))
+        && (!('hasAudio' in data) || (data.hasAudio is bool))
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64))
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    // Users Collection - Strict PII owner-only isolation
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false; // Blanket enumeration of user accounts is forbidden
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUser(incoming())
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt;
+      allow delete: if isOwner(userId) && isValidId(userId);
+    }
+
+    // Projects Collection
+    match /projects/{projectId} {
+      allow get: if isSignedIn() && isValidId(projectId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(projectId)
+        && incoming().ownerId == request.auth.uid
+        && incoming().id == projectId
+        && isValidProject(incoming());
+      allow update: if isSignedIn() && isValidId(projectId)
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && isValidProject(incoming());
+      allow delete: if isSignedIn() && isValidId(projectId) && existing().ownerId == request.auth.uid;
+
+      // Segments Subcollection (Master Gate)
+      match /segments/{segmentId} {
+        allow get: if isSignedIn() && isValidId(projectId) && isValidId(segmentId) && existing().ownerId == request.auth.uid;
+        allow list: if isSignedIn() && isValidId(projectId) && resource.data.ownerId == request.auth.uid;
+        allow create: if isSignedIn() && isValidId(projectId) && isValidId(segmentId)
+          && incoming().ownerId == request.auth.uid
+          && incoming().projectId == projectId
+          && incoming().id == segmentId
+          && isValidSegment(incoming(), projectId);
+        allow update: if isSignedIn() && isValidId(projectId) && isValidId(segmentId)
+          && existing().ownerId == request.auth.uid
+          && incoming().ownerId == existing().ownerId
+          && incoming().projectId == existing().projectId
+          && incoming().id == existing().id
+          && isValidSegment(incoming(), projectId);
+        allow delete: if isSignedIn() && isValidId(projectId) && isValidId(segmentId) && existing().ownerId == request.auth.uid;
+      }
+    }
+  }
+}
